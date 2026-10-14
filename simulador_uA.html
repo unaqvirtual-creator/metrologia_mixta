@@ -2,137 +2,238 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Simulador de incertidumbre Tipo A</title>
 <style>
-  :root{--azul:#0B3D62;--naranja:#FF6B35;--gris:#C7CDD1;--verde:#3E7F68;--claro:#EAF1F8;}
+  :root{
+    --azul:#0B3D62; --naranja:#FF6B35; --gris:#C7CDD1; --claro:#EAF1F8;
+    /* Tamaños que escalan con el ancho y el alto del recuadro */
+    --fs:clamp(11px, 0.9vw + 1.5vh, 17px);
+    --gap:clamp(5px, 1.3vh, 12px);
+  }
   *{box-sizing:border-box}
-  body{margin:0;padding:14px;font-family:"Open Sans",Roboto,Arial,sans-serif;background:#fff;color:#222}
-  .wrap{max-width:760px;margin:0 auto}
-  h1{font-size:18px;color:var(--azul);margin:0 0 4px}
-  p.sub{margin:0 0 12px;font-size:14px;color:#555}
-  .panel{background:var(--claro);border-radius:12px;padding:14px 16px;margin-bottom:12px}
-  .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  label{font-weight:700;color:var(--azul);font-size:15px}
-  #nval{background:var(--azul);color:#fff;border-radius:20px;padding:2px 14px;font-weight:700;font-size:16px;min-width:46px;text-align:center}
-  input[type=range]{flex:1;min-width:180px;accent-color:var(--naranja);height:32px}
-  .formula{font-size:16px;color:var(--azul);text-align:center;margin:8px 0 0}
-  .cards{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-  .card{flex:1;min-width:140px;background:#fff;border:2px solid var(--gris);border-radius:12px;padding:8px 12px;text-align:center}
-  .card b{display:block;font-size:12px;color:#666;font-weight:600}
-  .card span{font-size:22px;font-weight:700;color:var(--azul)}
+  html,body{height:100%;margin:0}
+  body{
+    font-family:"Open Sans",Roboto,Arial,sans-serif;
+    font-size:var(--fs);color:#222;background:transparent;
+    padding:var(--gap) calc(var(--gap)*1.4);
+    overflow-x:hidden;overflow-y:auto;
+  }
+  /* Contenedor que se estira a todo el alto disponible */
+  .app{min-height:100%;display:flex;flex-direction:column;gap:var(--gap);max-width:1100px;margin:0 auto}
+
+  h1{font-size:1.18em;color:var(--azul);margin:0;line-height:1.2}
+  .sub{margin:2px 0 0;font-size:.9em;color:#555}
+
+  .panel{background:var(--claro);border-radius:12px;padding:calc(var(--gap)*1.1) calc(var(--gap)*1.5)}
+  .row{display:flex;align-items:center;gap:calc(var(--gap)*1.2);flex-wrap:wrap}
+  label{font-weight:700;color:var(--azul)}
+  #nval{background:var(--azul);color:#fff;border-radius:20px;padding:1px .8em;font-weight:700;min-width:2.8em;text-align:center}
+  input[type=range]{flex:1 1 10em;min-width:8em;accent-color:var(--naranja);height:2.2em;margin:0}
+  .presets{display:flex;gap:.5em;flex-wrap:wrap;margin-top:var(--gap)}
+  button{border:2px solid var(--azul);background:#fff;color:var(--azul);font:inherit;font-weight:700;
+         border-radius:20px;padding:.25em .9em;cursor:pointer;line-height:1.3}
+  button:hover,button:focus-visible{background:var(--azul);color:#fff;outline:none}
+  button[aria-pressed="true"]{background:var(--azul);color:#fff}
+  .formula{margin:var(--gap) 0 0;color:var(--azul);text-align:center}
+
+  .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap)}
+  .card{background:#fff;border:2px solid var(--gris);border-radius:12px;padding:.4em .6em;text-align:center;min-width:0}
+  .card b{display:block;font-size:.78em;color:#666;font-weight:600;line-height:1.2}
+  .card span{display:block;font-size:1.45em;font-weight:700;color:var(--azul);white-space:nowrap}
   .card.hl{border-color:var(--naranja)}
   .card.hl span{color:var(--naranja)}
-  svg{width:100%;height:auto;display:block;background:#fff;border:1px solid var(--gris);border-radius:12px}
-  .note{font-size:13px;color:#555;margin-top:8px;text-align:center}
-  .presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-  button{border:2px solid var(--azul);background:#fff;color:var(--azul);font-weight:700;border-radius:20px;padding:5px 14px;cursor:pointer;font-size:13px}
-  button:hover{background:var(--azul);color:#fff}
+
+  .legend{display:flex;gap:1.2em;flex-wrap:wrap;justify-content:center;font-size:.85em;color:#555}
+  .legend i{display:inline-block;width:1.6em;height:.8em;border-radius:3px;vertical-align:-.05em;margin-right:.4em}
+
+  /* El gráfico ocupa TODO el alto que sobra */
+  .chart{flex:1 1 auto;min-height:110px;position:relative;background:rgba(255,255,255,.92);
+         border:1px solid var(--gris);border-radius:12px;overflow:hidden}
+  .chart svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .note{margin:0;text-align:center;color:#555;font-size:.9em;min-height:1.3em}
+
+  /* Recuadros bajos: se ocultan elementos secundarios */
+  @media (max-height:520px){ .sub,.formula,.legend{display:none} }
+  @media (max-height:400px){ .presets,.note{display:none} .card b{display:none} }
+  @media (max-height:300px){ h1{display:none} }
+  /* Recuadros angostos */
+  @media (max-width:430px){
+    .card b{font-size:.72em}
+    .card span{font-size:1.2em}
+    button{padding:.2em .6em}
+  }
+  @media (prefers-reduced-motion:reduce){ *{scroll-behavior:auto} }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>¿Cómo cambia la incertidumbre Tipo A al medir más veces?</h1>
-  <p class="sub">Mueve el control y observa cómo se estrecha el intervalo alrededor de la media.</p>
+<div class="app">
+  <div>
+    <h1>¿Cómo cambia la incertidumbre Tipo A al medir más veces?</h1>
+    <p class="sub">Mueve el control y observa cómo se estrecha el intervalo alrededor de la media.</p>
+  </div>
 
   <div class="panel">
     <div class="row">
-      <label for="n">Número de observaciones (n)</label>
+      <label for="n">Observaciones (n)</label>
       <span id="nval">10</span>
       <input type="range" id="n" min="1" max="50" step="1" value="10" aria-label="Número de observaciones">
     </div>
-    <div class="presets">
+    <div class="presets" role="group" aria-label="Valores rápidos de n">
       <button data-n="1">n = 1</button>
       <button data-n="4">n = 4</button>
       <button data-n="10">n = 10</button>
       <button data-n="25">n = 25</button>
       <button data-n="50">n = 50</button>
     </div>
-    <p class="formula">u<sub>A</sub> = s / √n &nbsp;&nbsp;con&nbsp;&nbsp; s = 0.0022 mm (caso del buje)</p>
+    <p class="formula">u<sub>A</sub> = s / √n &nbsp;con&nbsp; s = 0.0022 mm (caso del buje)</p>
   </div>
 
   <div class="cards">
     <div class="card"><b>Desviación estándar (s)</b><span>0.0022 mm</span></div>
     <div class="card hl"><b>Incertidumbre Tipo A (u<sub>A</sub>)</b><span id="uA">0.0007 mm</span></div>
-    <div class="card"><b>Reducción respecto a n = 1</b><span id="red">68 %</span></div>
+    <div class="card"><b>Reducción vs. n = 1</b><span id="red">68 %</span></div>
   </div>
 
-  <svg id="chart" viewBox="0 0 700 260" role="img" aria-label="Intervalo de incertidumbre Tipo A">
-    <!-- Escala -->
-    <line x1="40" y1="110" x2="660" y2="110" stroke="#0B3D62" stroke-width="2"/>
-    <line x1="350" y1="95" x2="350" y2="125" stroke="#0B3D62" stroke-width="2" stroke-dasharray="4 3"/>
-    <!-- Banda n=1 de referencia -->
-    <rect id="ref" x="0" y="96" width="0" height="28" fill="#C7CDD1" opacity=".55"/>
-    <!-- Banda actual -->
-    <rect id="band" x="0" y="92" width="0" height="36" fill="#FF6B35" opacity=".45" rx="3"/>
-    <line id="capL" x1="0" y1="84" x2="0" y2="136" stroke="#FF6B35" stroke-width="4"/>
-    <line id="capR" x1="0" y1="84" x2="0" y2="136" stroke="#FF6B35" stroke-width="4"/>
-    <circle cx="350" cy="110" r="7" fill="#0B3D62"/>
-    <text x="350" y="160" text-anchor="middle" font-size="14" fill="#0B3D62" font-weight="700">media (x̄)</text>
-    <text id="lblL" x="0" y="76" text-anchor="middle" font-size="13" fill="#FF6B35" font-weight="700"></text>
-    <text id="lblR" x="0" y="76" text-anchor="middle" font-size="13" fill="#FF6B35" font-weight="700"></text>
-    <text x="48" y="30" font-size="13" fill="#666">Gris: intervalo con n = 1 (referencia) · Naranja: intervalo con n actual</text>
-    <!-- Mini gráfica u_A vs n -->
-    <g transform="translate(40,185)">
-      <line x1="0" y1="60" x2="620" y2="60" stroke="#C7CDD1"/>
-      <path id="curve" d="" fill="none" stroke="#0B3D62" stroke-width="2.5"/>
-      <circle id="dot" r="6" fill="#FF6B35"/>
-      <text x="0" y="75" font-size="11" fill="#666">n = 1</text>
-      <text x="620" y="75" font-size="11" fill="#666" text-anchor="end">n = 50</text>
-    </g>
-  </svg>
-  <p class="note" id="msg"></p>
+  <div class="legend">
+    <span><i style="background:#C7CDD1"></i>Intervalo con n = 1 (referencia)</span>
+    <span><i style="background:#FF6B35;opacity:.7"></i>Intervalo con n actual</span>
+  </div>
+
+  <div class="chart" id="chart">
+    <svg id="svg" role="img" aria-label="Intervalo de incertidumbre Tipo A según el número de observaciones"></svg>
+  </div>
+
+  <p class="note" id="msg" aria-live="polite"></p>
 </div>
 
 <script>
 (function(){
-  var S = 0.0022;          // desviación estándar experimental (mm)
-  var HALF = 300;          // semiancho máximo en px (u_A con n=1)
-  var CX = 350;
+  var S = 0.0022;                 // desviación estándar experimental (mm)
+  var W = 700;                    // ancho fijo del sistema de coordenadas del SVG
+  var NS = 'http://www.w3.org/2000/svg';
   var slider = document.getElementById('n');
-  var $ = function(id){return document.getElementById(id);};
+  var chart  = document.getElementById('chart');
+  var svg    = document.getElementById('svg');
+  var $ = function(id){ return document.getElementById(id); };
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Curva u_A vs n
-  var pts = [];
-  for (var k=1;k<=50;k++){
-    var x = (k-1)/49*620;
-    var y = 60 - (S/Math.sqrt(k))/S*55;
-    pts.push((k===1?'M':'L')+x.toFixed(1)+' '+y.toFixed(1));
+  var target = parseInt(slider.value,10);   // n elegido
+  var shown  = target;                      // n mostrado (se anima entre valores)
+  var raf = null;
+
+  function el(name, attrs, text){
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
   }
-  $('curve').setAttribute('d', pts.join(' '));
 
-  function update(){
-    var n = parseInt(slider.value,10);
-    var uA = S/Math.sqrt(n);
-    var w = uA/S*HALF;                       // semiancho en px
+  /* Dibuja el SVG adaptando la altura de coordenadas a la proporción real del recuadro */
+  function draw(nf){
+    var cw = chart.clientWidth  || 600;
+    var ch = chart.clientHeight || 260;
+    var H  = Math.max(120, Math.min(520, W * ch / cw));   // alto en unidades del viewBox
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H.toFixed(1));
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    var uA   = S / Math.sqrt(nf);
+    var half = uA / S * 290;                 // semiancho en unidades
+    var CX = W/2;
+    var showCurve = H >= 230;
+    var bandCy = showCurve ? H * 0.27 : H * 0.5;
+    var bandH  = Math.max(26, Math.min(64, H * 0.17));
+    var fs = Math.max(20, 12.5 * W / cw);    // texto legible (≈12 px reales) aunque el recuadro sea angosto
+
+    // Eje y banda de referencia (n = 1)
+    svg.appendChild(el('line', {x1:20, y1:bandCy, x2:W-20, y2:bandCy, stroke:'#0B3D62', 'stroke-width':3}));
+    svg.appendChild(el('rect', {x:CX-290, y:bandCy-bandH*0.32, width:580, height:bandH*0.64, fill:'#C7CDD1', opacity:.6}));
+    // Banda actual
+    svg.appendChild(el('rect', {x:CX-half, y:bandCy-bandH/2, width:Math.max(2*half,3), height:bandH, rx:4, fill:'#FF6B35', opacity:.5}));
+    svg.appendChild(el('line', {x1:CX-half, y1:bandCy-bandH*0.8, x2:CX-half, y2:bandCy+bandH*0.8, stroke:'#FF6B35', 'stroke-width':5}));
+    svg.appendChild(el('line', {x1:CX+half, y1:bandCy-bandH*0.8, x2:CX+half, y2:bandCy+bandH*0.8, stroke:'#FF6B35', 'stroke-width':5}));
+    svg.appendChild(el('line', {x1:CX, y1:bandCy-bandH*0.8, x2:CX, y2:bandCy+bandH*0.8, stroke:'#0B3D62', 'stroke-width':2, 'stroke-dasharray':'5 4'}));
+    svg.appendChild(el('circle', {cx:CX, cy:bandCy, r:8, fill:'#0B3D62'}));
+
+    // Etiquetas
+    var ly = bandCy - bandH*0.8 - 8;
+    var lw = (fs-2) * 4.4 + 10;              // ancho aproximado de la etiqueta
+    svg.appendChild(el('text', {x:Math.max(CX-half-6, lw), y:ly, 'text-anchor':'end', 'font-size':fs-2, fill:'#FF6B35', 'font-weight':700}, '−' + uA.toFixed(4)));
+    svg.appendChild(el('text', {x:Math.min(CX+half+6, W-lw), y:ly, 'text-anchor':'start', 'font-size':fs-2, fill:'#FF6B35', 'font-weight':700}, '+' + uA.toFixed(4)));
+    svg.appendChild(el('text', {x:CX, y:bandCy+bandH*0.8+fs+4, 'text-anchor':'middle', 'font-size':fs, fill:'#0B3D62', 'font-weight':700}, 'media (x̄)'));
+
+    // Mini-gráfica u_A vs n
+    if (showCurve){
+      var top = H*0.62, base = H - 30, x0 = 40, x1 = W - 40, i, d = '';
+      svg.appendChild(el('line', {x1:x0, y1:base, x2:x1, y2:base, stroke:'#C7CDD1', 'stroke-width':2}));
+      for (i=1;i<=50;i++){
+        var x = x0 + (i-1)/49*(x1-x0);
+        var y = base - (1/Math.sqrt(i)) * (base-top);
+        d += (i===1?'M':'L') + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+      }
+      svg.appendChild(el('path', {d:d, fill:'none', stroke:'#0B3D62', 'stroke-width':3}));
+      var dx = x0 + (nf-1)/49*(x1-x0);
+      var dy = base - (1/Math.sqrt(nf)) * (base-top);
+      svg.appendChild(el('line', {x1:dx, y1:dy, x2:dx, y2:base, stroke:'#FF6B35', 'stroke-width':2, 'stroke-dasharray':'4 3'}));
+      svg.appendChild(el('circle', {cx:dx, cy:dy, r:8, fill:'#FF6B35'}));
+      svg.appendChild(el('text', {x:x0, y:H-6, 'font-size':fs-4, fill:'#666'}, 'n = 1'));
+      svg.appendChild(el('text', {x:x1, y:H-6, 'font-size':fs-4, fill:'#666', 'text-anchor':'end'}, 'n = 50'));
+      svg.appendChild(el('text', {x:x1, y:top-4, 'font-size':fs-4, fill:'#0B3D62', 'text-anchor':'end', 'font-weight':700}, 'uA = s/√n'));
+    }
+  }
+
+  function texts(n){
+    var uA = S / Math.sqrt(n);
     $('nval').textContent = n;
-    $('uA').textContent = uA.toFixed(4)+' mm';
-    $('red').textContent = Math.round((1-1/Math.sqrt(n))*100)+' %';
-
-    $('ref').setAttribute('x', CX-HALF); $('ref').setAttribute('width', 2*HALF);
-    $('band').setAttribute('x', CX-w);   $('band').setAttribute('width', Math.max(2*w,2));
-    $('capL').setAttribute('x1', CX-w);  $('capL').setAttribute('x2', CX-w);
-    $('capR').setAttribute('x1', CX+w);  $('capR').setAttribute('x2', CX+w);
-    $('lblL').setAttribute('x', CX-w);   $('lblL').textContent = '−'+uA.toFixed(4);
-    $('lblR').setAttribute('x', CX+w);   $('lblR').textContent = '+'+uA.toFixed(4);
-
-    $('dot').setAttribute('cx', (n-1)/49*620);
-    $('dot').setAttribute('cy', 60 - (uA/S)*55);
-
+    $('uA').textContent = uA.toFixed(4) + ' mm';
+    $('red').textContent = Math.round((1 - 1/Math.sqrt(n)) * 100) + ' %';
     var msg;
-    if (n===1) msg = 'Con una sola lectura, la incertidumbre es igual a la dispersión del proceso.';
-    else if (n<10) msg = 'Cada lectura adicional ayuda, pero con rendimientos decrecientes.';
-    else if (n<30) msg = 'Para reducir u_A a la mitad se necesitan 4 veces más lecturas.';
-    else msg = 'Pasar de este punto aporta muy poco: la mejora es cada vez menor.';
+    if (n === 1)      msg = 'Con una sola lectura, la incertidumbre es igual a la dispersión del proceso.';
+    else if (n < 10)  msg = 'Cada lectura adicional ayuda, pero con rendimientos decrecientes.';
+    else if (n < 30)  msg = 'Para reducir uA a la mitad se necesitan 4 veces más lecturas.';
+    else              msg = 'Pasar de este punto aporta muy poco: la mejora es cada vez menor.';
     $('msg').textContent = msg;
+    var b = document.querySelectorAll('button[data-n]');
+    for (var i=0;i<b.length;i++) b[i].setAttribute('aria-pressed', String(parseInt(b[i].getAttribute('data-n'),10) === n));
   }
 
-  slider.addEventListener('input', update);
+  /* Cambio suave entre valores de n */
+  function go(n){
+    target = n;
+    texts(n);
+    if (raf) cancelAnimationFrame(raf);
+    if (reduce){ shown = n; draw(shown); return; }
+    var from = shown, t0 = null, dur = 220;
+    function step(t){
+      if (t0 === null) t0 = t;
+      var p = Math.min(1, (t - t0) / dur);
+      p = 1 - Math.pow(1 - p, 3);
+      shown = from + (n - from) * p;
+      draw(shown);
+      if (p < 1) raf = requestAnimationFrame(step);
+    }
+    raf = requestAnimationFrame(step);
+  }
+
+  slider.addEventListener('input', function(){ go(parseInt(slider.value,10)); });
   var b = document.querySelectorAll('button[data-n]');
   for (var i=0;i<b.length;i++){
-    b[i].addEventListener('click', function(){ slider.value=this.getAttribute('data-n'); update(); });
+    b[i].addEventListener('click', function(){
+      slider.value = this.getAttribute('data-n');
+      go(parseInt(slider.value,10));
+    });
   }
-  update();
+
+  /* Redibuja cuando cambia el tamaño del recuadro (Genially, giro del móvil, etc.) */
+  if (window.ResizeObserver){
+    new ResizeObserver(function(){ draw(shown); }).observe(chart);
+  } else {
+    window.addEventListener('resize', function(){ draw(shown); });
+  }
+
+  texts(target);
+  draw(shown);
 })();
 </script>
 </body>
