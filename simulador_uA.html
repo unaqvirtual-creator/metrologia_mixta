@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador de incertidumbre Tipo A</title>
+<style>
+  :root{--azul:#0B3D62;--naranja:#FF6B35;--gris:#C7CDD1;--verde:#3E7F68;--claro:#EAF1F8;}
+  *{box-sizing:border-box}
+  body{margin:0;padding:14px;font-family:"Open Sans",Roboto,Arial,sans-serif;background:#fff;color:#222}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:18px;color:var(--azul);margin:0 0 4px}
+  p.sub{margin:0 0 12px;font-size:14px;color:#555}
+  .panel{background:var(--claro);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  label{font-weight:700;color:var(--azul);font-size:15px}
+  #nval{background:var(--azul);color:#fff;border-radius:20px;padding:2px 14px;font-weight:700;font-size:16px;min-width:46px;text-align:center}
+  input[type=range]{flex:1;min-width:180px;accent-color:var(--naranja);height:32px}
+  .formula{font-size:16px;color:var(--azul);text-align:center;margin:8px 0 0}
+  .cards{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .card{flex:1;min-width:140px;background:#fff;border:2px solid var(--gris);border-radius:12px;padding:8px 12px;text-align:center}
+  .card b{display:block;font-size:12px;color:#666;font-weight:600}
+  .card span{font-size:22px;font-weight:700;color:var(--azul)}
+  .card.hl{border-color:var(--naranja)}
+  .card.hl span{color:var(--naranja)}
+  svg{width:100%;height:auto;display:block;background:#fff;border:1px solid var(--gris);border-radius:12px}
+  .note{font-size:13px;color:#555;margin-top:8px;text-align:center}
+  .presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  button{border:2px solid var(--azul);background:#fff;color:var(--azul);font-weight:700;border-radius:20px;padding:5px 14px;cursor:pointer;font-size:13px}
+  button:hover{background:var(--azul);color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>¿Cómo cambia la incertidumbre Tipo A al medir más veces?</h1>
+  <p class="sub">Mueve el control y observa cómo se estrecha el intervalo alrededor de la media.</p>
+
+  <div class="panel">
+    <div class="row">
+      <label for="n">Número de observaciones (n)</label>
+      <span id="nval">10</span>
+      <input type="range" id="n" min="1" max="50" step="1" value="10" aria-label="Número de observaciones">
+    </div>
+    <div class="presets">
+      <button data-n="1">n = 1</button>
+      <button data-n="4">n = 4</button>
+      <button data-n="10">n = 10</button>
+      <button data-n="25">n = 25</button>
+      <button data-n="50">n = 50</button>
+    </div>
+    <p class="formula">u<sub>A</sub> = s / √n &nbsp;&nbsp;con&nbsp;&nbsp; s = 0.0022 mm (caso del buje)</p>
+  </div>
+
+  <div class="cards">
+    <div class="card"><b>Desviación estándar (s)</b><span>0.0022 mm</span></div>
+    <div class="card hl"><b>Incertidumbre Tipo A (u<sub>A</sub>)</b><span id="uA">0.0007 mm</span></div>
+    <div class="card"><b>Reducción respecto a n = 1</b><span id="red">68 %</span></div>
+  </div>
+
+  <svg id="chart" viewBox="0 0 700 260" role="img" aria-label="Intervalo de incertidumbre Tipo A">
+    <!-- Escala -->
+    <line x1="40" y1="110" x2="660" y2="110" stroke="#0B3D62" stroke-width="2"/>
+    <line x1="350" y1="95" x2="350" y2="125" stroke="#0B3D62" stroke-width="2" stroke-dasharray="4 3"/>
+    <!-- Banda n=1 de referencia -->
+    <rect id="ref" x="0" y="96" width="0" height="28" fill="#C7CDD1" opacity=".55"/>
+    <!-- Banda actual -->
+    <rect id="band" x="0" y="92" width="0" height="36" fill="#FF6B35" opacity=".45" rx="3"/>
+    <line id="capL" x1="0" y1="84" x2="0" y2="136" stroke="#FF6B35" stroke-width="4"/>
+    <line id="capR" x1="0" y1="84" x2="0" y2="136" stroke="#FF6B35" stroke-width="4"/>
+    <circle cx="350" cy="110" r="7" fill="#0B3D62"/>
+    <text x="350" y="160" text-anchor="middle" font-size="14" fill="#0B3D62" font-weight="700">media (x̄)</text>
+    <text id="lblL" x="0" y="76" text-anchor="middle" font-size="13" fill="#FF6B35" font-weight="700"></text>
+    <text id="lblR" x="0" y="76" text-anchor="middle" font-size="13" fill="#FF6B35" font-weight="700"></text>
+    <text x="48" y="30" font-size="13" fill="#666">Gris: intervalo con n = 1 (referencia) · Naranja: intervalo con n actual</text>
+    <!-- Mini gráfica u_A vs n -->
+    <g transform="translate(40,185)">
+      <line x1="0" y1="60" x2="620" y2="60" stroke="#C7CDD1"/>
+      <path id="curve" d="" fill="none" stroke="#0B3D62" stroke-width="2.5"/>
+      <circle id="dot" r="6" fill="#FF6B35"/>
+      <text x="0" y="75" font-size="11" fill="#666">n = 1</text>
+      <text x="620" y="75" font-size="11" fill="#666" text-anchor="end">n = 50</text>
+    </g>
+  </svg>
+  <p class="note" id="msg"></p>
+</div>
+
+<script>
+(function(){
+  var S = 0.0022;          // desviación estándar experimental (mm)
+  var HALF = 300;          // semiancho máximo en px (u_A con n=1)
+  var CX = 350;
+  var slider = document.getElementById('n');
+  var $ = function(id){return document.getElementById(id);};
+
+  // Curva u_A vs n
+  var pts = [];
+  for (var k=1;k<=50;k++){
+    var x = (k-1)/49*620;
+    var y = 60 - (S/Math.sqrt(k))/S*55;
+    pts.push((k===1?'M':'L')+x.toFixed(1)+' '+y.toFixed(1));
+  }
+  $('curve').setAttribute('d', pts.join(' '));
+
+  function update(){
+    var n = parseInt(slider.value,10);
+    var uA = S/Math.sqrt(n);
+    var w = uA/S*HALF;                       // semiancho en px
+    $('nval').textContent = n;
+    $('uA').textContent = uA.toFixed(4)+' mm';
+    $('red').textContent = Math.round((1-1/Math.sqrt(n))*100)+' %';
+
+    $('ref').setAttribute('x', CX-HALF); $('ref').setAttribute('width', 2*HALF);
+    $('band').setAttribute('x', CX-w);   $('band').setAttribute('width', Math.max(2*w,2));
+    $('capL').setAttribute('x1', CX-w);  $('capL').setAttribute('x2', CX-w);
+    $('capR').setAttribute('x1', CX+w);  $('capR').setAttribute('x2', CX+w);
+    $('lblL').setAttribute('x', CX-w);   $('lblL').textContent = '−'+uA.toFixed(4);
+    $('lblR').setAttribute('x', CX+w);   $('lblR').textContent = '+'+uA.toFixed(4);
+
+    $('dot').setAttribute('cx', (n-1)/49*620);
+    $('dot').setAttribute('cy', 60 - (uA/S)*55);
+
+    var msg;
+    if (n===1) msg = 'Con una sola lectura, la incertidumbre es igual a la dispersión del proceso.';
+    else if (n<10) msg = 'Cada lectura adicional ayuda, pero con rendimientos decrecientes.';
+    else if (n<30) msg = 'Para reducir u_A a la mitad se necesitan 4 veces más lecturas.';
+    else msg = 'Pasar de este punto aporta muy poco: la mejora es cada vez menor.';
+    $('msg').textContent = msg;
+  }
+
+  slider.addEventListener('input', update);
+  var b = document.querySelectorAll('button[data-n]');
+  for (var i=0;i<b.length;i++){
+    b[i].addEventListener('click', function(){ slider.value=this.getAttribute('data-n'); update(); });
+  }
+  update();
+})();
+</script>
+</body>
+</html>
