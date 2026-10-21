@@ -221,7 +221,7 @@
 
     var msg;
     if (dT === 0) msg = 'A 20 °C (ISO 1) no hay dilatación: es la temperatura de referencia.';
-    else if (L === 100 && A6 === 11.5 && T === 25) msg = 'Caso de la guía: casi 6 µm de desviación causados solo por el ambiente.';
+    else if (L === 100 && A6 === 11.5 && T === 25) msg = 'Casi 6 µm de desviación causados solo por el ambiente.';
     else if (Math.abs(dT) <= 1) msg = 'Dentro de la zona 20 ± 1 °C del cuarto de metrología: la dilatación es pequeña.';
     else msg = 'Fuera de 20 ± 1 °C: conviene estabilizar la pieza antes de emitir un dictamen.';
     if (L === 25.4 && dT !== 0) msg += ' Para el buje, ΔL equivale al ' + Math.round(Math.abs(dUm)/12*100) + ' % de su tolerancia (12 µm).';
