@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulador de dilatación térmica</title>
+<style>
+  :root{
+    --azul:#0B3D62; --naranja:#FF6B35; --gris:#C7CDD1; --claro:#EAF1F8; --verde:#3E7F68;
+    --fs:clamp(11px, 0.9vw + 1.5vh, 17px);
+    --gap:clamp(5px, 1.3vh, 12px);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    font-family:"Open Sans",Roboto,Arial,sans-serif;
+    font-size:var(--fs);color:#222;background:transparent;
+    padding:var(--gap) calc(var(--gap)*1.4);
+    overflow-x:hidden;overflow-y:auto;
+  }
+  .app{min-height:100%;display:flex;flex-direction:column;gap:var(--gap);max-width:1100px;margin:0 auto}
+
+  h1{font-size:1.18em;color:var(--azul);margin:0;line-height:1.2}
+  .sub{margin:2px 0 0;font-size:.9em;color:#555}
+
+  .panel{background:var(--claro);border-radius:12px;padding:calc(var(--gap)*1.1) calc(var(--gap)*1.5)}
+  .row{display:flex;align-items:center;gap:calc(var(--gap)*1.2);flex-wrap:wrap}
+  label{font-weight:700;color:var(--azul)}
+  #val{background:var(--azul);color:#fff;border-radius:20px;padding:1px .8em;font-weight:700;min-width:4.6em;text-align:center;white-space:nowrap}
+  input[type=range]{flex:1 1 10em;min-width:8em;accent-color:var(--naranja);height:2.2em;margin:0}
+  .btns{display:flex;gap:.5em;flex-wrap:wrap;margin-top:var(--gap);align-items:center}
+  .btns .tag{font-size:.85em;color:#555;font-weight:600;margin-right:.2em}
+  button{border:2px solid var(--azul);background:#fff;color:var(--azul);font:inherit;font-weight:700;
+         border-radius:20px;padding:.25em .9em;cursor:pointer;line-height:1.3}
+  button:hover,button:focus-visible{background:var(--azul);color:#fff;outline:none}
+  button[aria-pressed="true"]{background:var(--azul);color:#fff}
+  .formula{margin:var(--gap) 0 0;color:var(--azul);text-align:center}
+
+  .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap)}
+  .card{background:#fff;border:2px solid var(--gris);border-radius:12px;padding:.4em .6em;text-align:center;min-width:0}
+  .card b{display:block;font-size:.78em;color:#666;font-weight:600;line-height:1.2}
+  .card span{display:block;font-size:1.45em;font-weight:700;color:var(--azul);white-space:nowrap}
+  .card.hl{border-color:var(--naranja)}
+  .card.hl span{color:var(--naranja)}
+
+  .legend{display:flex;gap:1.2em;flex-wrap:wrap;justify-content:center;font-size:.85em;color:#555}
+  .legend i{display:inline-block;width:1.6em;height:.8em;border-radius:3px;vertical-align:-.05em;margin-right:.4em}
+
+  .chart{flex:1 1 auto;min-height:110px;position:relative;background:rgba(255,255,255,.92);
+         border:1px solid var(--gris);border-radius:12px;overflow:hidden}
+  .chart svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .note{margin:0;text-align:center;color:#555;font-size:.9em;min-height:1.3em}
+
+  @media (max-height:600px){ .sub,.legend{display:none} }
+  @media (max-height:520px){ .formula{display:none} }
+  @media (max-height:430px){ .btns{display:none} .note{display:none} .card b{display:none} }
+  @media (max-height:300px){ h1{display:none} }
+  @media (max-width:430px){
+    .card b{font-size:.72em}
+    .card span{font-size:.98em}
+    button{padding:.2em .6em}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div>
+    <h1>¿Cuánto cambia una pieza con la temperatura?</h1>
+    <p class="sub">Mueve la temperatura y observa cómo cambia la longitud respecto a los 20 °C de referencia (ISO 1).</p>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <label for="t">Temperatura ambiente</label>
+      <span id="val">25.0 °C</span>
+      <input type="range" id="t" min="15" max="30" step="0.5" value="25" aria-label="Temperatura ambiente en grados Celsius">
+    </div>
+    <div class="btns" role="group" aria-label="Temperaturas rápidas">
+      <span class="tag">Temperatura:</span>
+      <button data-t="15">15 °C</button>
+      <button data-t="20">20 °C</button>
+      <button data-t="25">25 °C</button>
+      <button data-t="30">30 °C</button>
+    </div>
+    <div class="btns" role="group" aria-label="Material">
+      <span class="tag">Material:</span>
+      <button data-a="11.5" aria-pressed="true">Acero inoxidable</button>
+      <button data-a="8.6" aria-pressed="false">Titanio Ti-6Al-4V</button>
+      <button data-a="23.6" aria-pressed="false">Aluminio</button>
+    </div>
+    <div class="btns" role="group" aria-label="Longitud nominal">
+      <span class="tag">Longitud:</span>
+      <button data-l="25.4" aria-pressed="false">25.4 mm (buje)</button>
+      <button data-l="100" aria-pressed="true">100 mm</button>
+    </div>
+    <p class="formula" id="formula"></p>
+  </div>
+
+  <div class="cards">
+    <div class="card"><b>Diferencia de temperatura (ΔT)</b><span id="cT">+5.0 °C</span></div>
+    <div class="card hl"><b>Dilatación (ΔL)</b><span id="cL">+5.75 µm</span></div>
+    <div class="card"><b>Longitud a esa temperatura</b><span id="cF">100.00575 mm</span></div>
+  </div>
+
+  <div class="legend">
+    <span><i style="border:2px dashed #0B3D62;background:transparent"></i>Longitud a 20 °C (referencia)</span>
+    <span><i style="background:#FF6B35"></i>Longitud a la temperatura elegida</span>
+    <span>Cambio dibujado ×500 (solo ilustrativo)</span>
+  </div>
+
+  <div class="chart" id="chart">
+    <svg id="svg" role="img" aria-label="Pieza metálica que se dilata o se contrae según la temperatura respecto a 20 grados"></svg>
+  </div>
+
+  <p class="note" id="msg" aria-live="polite"></p>
+</div>
+
+<script>
+(function(){
+  var TREF = 20;                    // temperatura de referencia ISO 1 (°C)
+  var K = 500;                      // exageración visual del cambio de longitud
+  var BASE = 400;                   // longitud dibujada a 20 °C (unidades del viewBox)
+  var W = 700, NS = 'http://www.w3.org/2000/svg';
+  var A6 = 11.5;                    // coeficiente α en 10⁻⁶ °C⁻¹
+  var L  = 100;                     // longitud nominal (mm)
+  var slider = document.getElementById('t');
+  var chart  = document.getElementById('chart');
+  var svg    = document.getElementById('svg');
+  var $ = function(id){ return document.getElementById(id); };
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function el(name, attrs, text){
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function sg(v, d){
+    var r = Math.abs(v).toFixed(d);
+    if (parseFloat(r) === 0) return (0).toFixed(d);
+    return (v > 0 ? '+' : '−') + r;
+  }
+  function hex(c){ return [parseInt(c.substr(1,2),16), parseInt(c.substr(3,2),16), parseInt(c.substr(5,2),16)]; }
+  function mix(a, b, t){
+    var A = hex(a), B = hex(b);
+    return 'rgb(' + A.map(function(v,i){ return Math.round(v + (B[i]-v)*t); }).join(',') + ')';
+  }
+  function tempColor(dT){
+    var t = Math.max(-1, Math.min(1, dT/10));
+    return t < 0 ? mix('#B7BEC4', '#5B9BD5', -t) : mix('#B7BEC4', '#FF6B35', t);
+  }
+  function dL_mm(T){ return L * A6 * 1e-6 * (T - TREF); }
+
+  var target = 25, shown = 25, raf = null;
+
+  /* ---------- Dibujo ---------- */
+  function draw(T){
+    var cw = chart.clientWidth  || 600;
+    var ch = chart.clientHeight || 260;
+    var H  = Math.max(120, Math.min(520, W * ch / cw));
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H.toFixed(1));
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    var dT  = T - TREF;
+    var rel = A6 * 1e-6 * dT;
+    var len = BASE * (1 + rel * K);
+    var fs  = Math.max(20, 12.5 * W / cw);
+    var showScale = H >= 170;
+    var bh  = Math.max(26, Math.min(56, H * 0.14));
+    var cy  = showScale ? Math.max(H * 0.30, bh/2 + fs + 26) : H * 0.55;
+    var x0  = 150, refX = x0 + BASE, endX = x0 + len;
+    var dMm = dL_mm(T), dUm = dMm * 1000;
+
+    // Apoyo fijo a la izquierda
+    svg.appendChild(el('rect', {x:x0-26, y:cy-bh*0.9, width:26, height:bh*1.8, fill:'#0B3D62', opacity:.85, rx:3}));
+    // Pieza
+    svg.appendChild(el('rect', {x:x0, y:cy-bh/2, width:len, height:bh, fill:tempColor(dT), stroke:'#0B3D62', 'stroke-width':3, rx:3}));
+    svg.appendChild(el('line', {x1:x0+6, y1:cy-bh/2+6, x2:endX-6, y2:cy-bh/2+6, stroke:'#fff', 'stroke-width':3, opacity:.45, 'stroke-linecap':'round'}));
+    // Referencia a 20 °C
+    svg.appendChild(el('line', {x1:refX, y1:cy-bh*0.9, x2:refX, y2:cy+bh*0.9+6, stroke:'#0B3D62', 'stroke-width':3, 'stroke-dasharray':'7 5'}));
+    svg.appendChild(el('text', {x:refX, y:cy+bh*0.9+fs+4, 'text-anchor':'middle', 'font-size':fs-5, fill:'#0B3D62', 'font-weight':700}, '20 °C'));
+    svg.appendChild(el('text', {x:x0, y:cy+bh*0.9+fs+4, 'text-anchor':'start', 'font-size':fs-5, fill:'#666'}, 'L = ' + (L === 100 ? '100' : '25.4') + ' mm'));
+
+    // Corchete de ΔL
+    var by = cy - bh/2 - 14;
+    var xa = Math.min(refX, endX), xb = Math.max(refX, endX);
+    svg.appendChild(el('line', {x1:xa, y1:by, x2:Math.max(xb, xa+2), y2:by, stroke:'#FF6B35', 'stroke-width':4}));
+    svg.appendChild(el('line', {x1:xa, y1:by-7, x2:xa, y2:by+7, stroke:'#FF6B35', 'stroke-width':4}));
+    svg.appendChild(el('line', {x1:Math.max(xb, xa+2), y1:by-7, x2:Math.max(xb, xa+2), y2:by+7, stroke:'#FF6B35', 'stroke-width':4}));
+    var lx = Math.max(130, Math.min(W-130, (xa + xb)/2));
+    svg.appendChild(el('text', {x:lx, y:by-12, 'text-anchor':'middle', 'font-size':fs, fill:'#FF6B35', 'font-weight':700}, 'ΔL = ' + sg(dUm, 2) + ' µm'));
+
+    // Escala de temperatura
+    if (showScale){
+      var sy = H * 0.78, sx0 = 60, sx1 = W - 60;
+      var X = function(v){ return sx0 + (v - 15) / 15 * (sx1 - sx0); };
+      svg.appendChild(el('rect', {x:X(19), y:sy-14, width:X(21)-X(19), height:28, fill:'#3E7F68', opacity:.3, rx:3}));
+      svg.appendChild(el('text', {x:X(20), y:sy-20, 'text-anchor':'middle', 'font-size':fs-4, fill:'#3E7F68', 'font-weight':700}, '20 ± 1 °C'));
+      svg.appendChild(el('line', {x1:sx0, y1:sy, x2:sx1, y2:sy, stroke:'#0B3D62', 'stroke-width':3}));
+      [15, 20, 25, 30].forEach(function(v){
+        svg.appendChild(el('line', {x1:X(v), y1:sy-(v===20?14:8), x2:X(v), y2:sy+(v===20?14:8), stroke:'#0B3D62', 'stroke-width':v===20?4:2.5}));
+        svg.appendChild(el('text', {x:X(v), y:sy+fs+8, 'text-anchor':'middle', 'font-size':fs-3, fill:v===20?'#0B3D62':'#666', 'font-weight':v===20?700:400}, v + ' °C'));
+      });
+      svg.appendChild(el('circle', {cx:X(T), cy:sy, r:10, fill:tempColor(dT), stroke:'#0B3D62', 'stroke-width':3}));
+      if (Math.abs(T - 20) > 2.6){
+        svg.appendChild(el('text', {x:X(T), y:sy-20, 'text-anchor':'middle', 'font-size':fs-3, fill:'#0B3D62', 'font-weight':700}, T.toFixed(1) + ' °C'));
+      }
+    }
+  }
+
+  /* ---------- Textos ---------- */
+  function texts(T){
+    var dT = T - TREF, dMm = dL_mm(T), dUm = dMm * 1000;
+    $('val').textContent = T.toFixed(1) + ' °C';
+    $('cT').textContent = sg(dT, 1) + ' °C';
+    $('cL').textContent = sg(dUm, 2) + ' µm';
+    $('cF').textContent = (L + dMm).toFixed(5) + ' mm';
+    $('formula').innerHTML = 'ΔL = L × α × ΔT = ' + L + ' × (' + A6 + '×10<sup>−6</sup>) × (' + sg(dT,1) + ') = ' +
+                             sg(dMm, 5) + ' mm = <b>' + sg(dUm, 2) + ' µm</b>';
+
+    var msg;
+    if (dT === 0) msg = 'A 20 °C (ISO 1) no hay dilatación: es la temperatura de referencia.';
+    else if (L === 100 && A6 === 11.5 && T === 25) msg = 'Caso de la guía: casi 6 µm de desviación causados solo por el ambiente.';
+    else if (Math.abs(dT) <= 1) msg = 'Dentro de la zona 20 ± 1 °C del cuarto de metrología: la dilatación es pequeña.';
+    else msg = 'Fuera de 20 ± 1 °C: conviene estabilizar la pieza antes de emitir un dictamen.';
+    if (L === 25.4 && dT !== 0) msg += ' Para el buje, ΔL equivale al ' + Math.round(Math.abs(dUm)/12*100) + ' % de su tolerancia (12 µm).';
+    $('msg').textContent = msg;
+
+    var bt = document.querySelectorAll('button[data-t]');
+    for (var i=0;i<bt.length;i++) bt[i].setAttribute('aria-pressed', String(parseFloat(bt[i].getAttribute('data-t')) === T));
+    var ba = document.querySelectorAll('button[data-a]');
+    for (var j=0;j<ba.length;j++) ba[j].setAttribute('aria-pressed', String(parseFloat(ba[j].getAttribute('data-a')) === A6));
+    var bl = document.querySelectorAll('button[data-l]');
+    for (var k=0;k<bl.length;k++) bl[k].setAttribute('aria-pressed', String(parseFloat(bl[k].getAttribute('data-l')) === L));
+  }
+
+  function go(T){
+    target = T;
+    texts(T);
+    if (raf) cancelAnimationFrame(raf);
+    if (reduce){ shown = T; draw(shown); return; }
+    var from = shown, t0 = null, dur = 240;
+    function step(t){
+      if (t0 === null) t0 = t;
+      var p = Math.min(1, (t - t0) / dur);
+      p = 1 - Math.pow(1 - p, 3);
+      shown = from + (T - from) * p;
+      draw(shown);
+      if (p < 1) raf = requestAnimationFrame(step);
+    }
+    raf = requestAnimationFrame(step);
+  }
+
+  slider.addEventListener('input', function(){ go(parseFloat(slider.value)); });
+
+  [].forEach.call(document.querySelectorAll('button[data-t]'), function(b){
+    b.addEventListener('click', function(){ slider.value = b.getAttribute('data-t'); go(parseFloat(slider.value)); });
+  });
+  [].forEach.call(document.querySelectorAll('button[data-a]'), function(b){
+    b.addEventListener('click', function(){ A6 = parseFloat(b.getAttribute('data-a')); go(parseFloat(slider.value)); });
+  });
+  [].forEach.call(document.querySelectorAll('button[data-l]'), function(b){
+    b.addEventListener('click', function(){ L = parseFloat(b.getAttribute('data-l')); go(parseFloat(slider.value)); });
+  });
+
+  if (window.ResizeObserver){
+    new ResizeObserver(function(){ draw(shown); }).observe(chart);
+  } else {
+    window.addEventListener('resize', function(){ draw(shown); });
+  }
+
+  texts(target);
+  draw(shown);
+})();
+</script>
+</body>
+</html>
